@@ -1,6 +1,6 @@
-use minifb::Key;
-use either::Either;
 use crate::chip8::registers::Register;
+use either::Either;
+use minifb::Key;
 
 pub type Address = u16;
 pub type Nibble = u8;
@@ -84,7 +84,7 @@ pub fn map_key_to_u8(key: Key) -> Option<u8> {
         Key::X => Some(0x0),
         Key::C => Some(0xB),
         Key::V => Some(0xF),
-        _ => None
+        _ => None,
     }
 }
 
@@ -106,7 +106,7 @@ pub fn map_u8_to_key(val: u8) -> Option<Key> {
         0x0 => Some(Key::X),
         0xB => Some(Key::C),
         0xF => Some(Key::V),
-        _ => None
+        _ => None,
     }
 }
 
@@ -121,11 +121,10 @@ pub fn to_bcd(byte: u8) -> [u8; 3] {
 mod tests {
     use super::*;
 
-
     #[test]
     fn test_opcodes() {
         const TESTCODE: u16 = 0x1234;
-        
+
         assert_eq!(get_first(TESTCODE), 0x1);
         assert_eq!(get_addr(TESTCODE), 0x0234);
         assert_eq!(get_vx(TESTCODE), Register::Vx(0x2));
@@ -136,9 +135,9 @@ mod tests {
 
     #[test]
     fn test_bcd() {
-        assert_eq!(to_bcd(255), [2,5,5]);
-        assert_eq!(to_bcd(12), [0,1,2]);
-        assert_eq!(to_bcd(8), [0,0,8]);
-        assert_eq!(to_bcd(0), [0,0,0]);
+        assert_eq!(to_bcd(255), [2, 5, 5]);
+        assert_eq!(to_bcd(12), [0, 1, 2]);
+        assert_eq!(to_bcd(8), [0, 0, 8]);
+        assert_eq!(to_bcd(0), [0, 0, 0]);
     }
 }

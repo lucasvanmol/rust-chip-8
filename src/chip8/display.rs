@@ -1,7 +1,7 @@
+use std::rc::Rc;
+use std::sync::mpsc::{self, Receiver, SyncSender, TryRecvError};
 use std::sync::{Arc, RwLock};
 use std::thread::{self, JoinHandle};
-use std::sync::mpsc::{self, Receiver, SyncSender, TryRecvError};
-use std::rc::Rc;
 
 use minifb::{Key, Scale, Window, WindowOptions};
 
@@ -18,12 +18,10 @@ pub struct Display {
     pub handle: JoinHandle<()>,
     buf_tx: SyncSender<Buffer>,
     end_rx: Receiver<bool>,
-    keys_pressed: Arc<RwLock<Vec<Key>>>
+    keys_pressed: Arc<RwLock<Vec<Key>>>,
 }
 
-
 impl Display {
-
     pub fn update_buffer(&self) {
         self.buf_tx.send(self.buffer).unwrap();
     }
@@ -31,23 +29,17 @@ impl Display {
     pub fn init() -> Self {
         let buffer = [0; WIDTH * HEIGHT];
 
-        let (buf_tx, buf_rx) : (SyncSender<Buffer>, Receiver<Buffer>) = mpsc::sync_channel(1);
+        let (buf_tx, buf_rx): (SyncSender<Buffer>, Receiver<Buffer>) = mpsc::sync_channel(1);
         let (key_tx, key_rx) = mpsc::channel();
         let (end_tx, end_rx) = mpsc::sync_channel(0);
 
-        let handle =  thread::spawn(move || {
+        let handle = thread::spawn(move || {
             let mut opts = WindowOptions::default();
             opts.scale = Scale::X16;
-        
-            let mut window = Window::new(
-                "Test - ESC to exit",
-                WIDTH,
-                HEIGHT,
-                opts,
-            ).unwrap();
 
+            let mut window = Window::new("Test - ESC to exit", WIDTH, HEIGHT, opts).unwrap();
 
-            let mut keys: Rc<Vec<Key>> = Rc::new(vec![]); 
+            let mut keys: Rc<Vec<Key>> = Rc::new(vec![]);
             while window.is_open() && !window.is_key_down(Key::Escape) {
                 match buf_rx.try_recv() {
                     Ok(buffer) => {
@@ -55,7 +47,7 @@ impl Display {
                     }
                     Err(_) => window.update(),
                 }
-                
+
                 let new_keys = Rc::new(window.get_keys().unwrap_or(vec![]));
                 if keys != new_keys {
                     keys = Rc::clone(&new_keys);
@@ -70,12 +62,10 @@ impl Display {
         let keys_pressed = Arc::new(RwLock::new(vec![]));
         let key_buffer = keys_pressed.clone();
 
-        thread::spawn(move || {
-            loop {
-                match key_rx.recv() {
-                    Ok(keys) => *keys_pressed.write().unwrap() = keys,
-                    Err(_) => break,
-                }
+        thread::spawn(move || loop {
+            match key_rx.recv() {
+                Ok(keys) => *keys_pressed.write().unwrap() = keys,
+                Err(_) => break,
             }
         });
 
@@ -116,14 +106,12 @@ impl Display {
         let slice = &mut self.buffer;
 
         for j in 0..num_bytes {
-
             // For every bit in byte, check if 1
             for i in 0..8 {
                 let filter: u8 = 0b10000000 >> i;
                 if bytes[j] & filter == filter {
-
                     // If so, XOR with buffer value, and track collision
-                    let index = Display::to_index(x as usize + i, y as usize + j);// % (WIDTH * HEIGHT);
+                    let index = Display::to_index(x as usize + i, y as usize + j); // % (WIDTH * HEIGHT);
                     if slice[index] == u32::MAX {
                         collision = true;
                         slice[index] = 0;
@@ -133,7 +121,6 @@ impl Display {
                 }
             }
         }
-
 
         collision
     }

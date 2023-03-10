@@ -3,9 +3,9 @@ use crate::chip8::opcodes::*;
 use crate::chip8::registers::Registers;
 use either::Either;
 use rand::random;
-use std::io;
-use std::thread::sleep_ms;
+use std::time::Duration;
 use std::{fs::File, io::Read};
+use std::{io, thread};
 
 const SPRITE_BYTE_LENGTH: usize = 5;
 const SPRITES: [u8; SPRITE_BYTE_LENGTH * 16] = [
@@ -313,7 +313,6 @@ impl CHIP8 {
 
             self.execute_instruction(instr);
 
-            // thread::sleep(Duration::from_nanos(1));
             if increment {
                 self.reg.PC += 2;
             }

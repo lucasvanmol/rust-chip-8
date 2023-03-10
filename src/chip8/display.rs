@@ -1,7 +1,8 @@
 use std::rc::Rc;
-use std::sync::mpsc::{self, Receiver, SyncSender, TryRecvError};
+use std::sync::mpsc::{self, Receiver, SyncSender};
 use std::sync::{Arc, RwLock};
 use std::thread::{self, JoinHandle};
+use std::time::Duration;
 
 use minifb::{Key, Scale, Window, WindowOptions};
 
@@ -14,22 +15,26 @@ type Buffer = [u32; WIDTH * HEIGHT];
 // update buffer is super slow. maybe only send buffer update every few hz? -> set fps
 
 pub struct Display {
+    screen: Arc<RwLock<Buffer>>,
     buffer: Buffer,
     pub handle: JoinHandle<()>,
-    buf_tx: SyncSender<Buffer>,
     keys_pressed: Arc<RwLock<Vec<Key>>>,
 }
 
 impl Display {
     pub fn update_buffer(&self) {
-        self.buf_tx.send(self.buffer).unwrap();
+        // TODO: add dynamic sleep to get consistent fps.
+        thread::sleep(Duration::from_micros(1));
+        *self.screen.write().unwrap() = self.buffer;
     }
 
     pub fn init() -> Self {
+        let screen = Arc::new(RwLock::new([0; WIDTH * HEIGHT]));
+        let screen_lock = screen.clone();
         let buffer = [0; WIDTH * HEIGHT];
 
-        let (buf_tx, buf_rx): (SyncSender<Buffer>, Receiver<Buffer>) = mpsc::sync_channel(1);
-        let (key_tx, key_rx) = mpsc::channel();
+        let keys_pressed = Arc::new(RwLock::new(vec![]));
+        let key_buffer = keys_pressed.clone();
 
         let handle = thread::spawn(move || {
             let mut opts = WindowOptions::default();
@@ -37,40 +42,24 @@ impl Display {
 
             let mut window = Window::new("Test - ESC to exit", WIDTH, HEIGHT, opts).unwrap();
 
-            let mut keys: Rc<Vec<Key>> = Rc::new(vec![]);
+            window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
+
             while window.is_open() && !window.is_key_down(Key::Escape) {
-                match buf_rx.try_recv() {
-                    Ok(buffer) => {
-                        window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
-                    }
+                match screen_lock.try_read() {
+                    Ok(gaurd) => window.update_with_buffer(&*gaurd, WIDTH, HEIGHT).unwrap(),
                     Err(_) => window.update(),
+                };
+
+                if let Some(keys) = window.get_keys() {
+                    *keys_pressed.write().unwrap() = keys.clone();
                 }
-
-                let new_keys = Rc::new(window.get_keys().unwrap_or(vec![]));
-                if keys != new_keys {
-                    keys = Rc::clone(&new_keys);
-                    key_tx.send((*keys).clone()).unwrap();
-                }
-            }
-
-            // Send end signal & flush out buf channel so that buf_tx.send does not hang
-            buf_rx.try_recv().unwrap();
-        });
-
-        let keys_pressed = Arc::new(RwLock::new(vec![]));
-        let key_buffer = keys_pressed.clone();
-
-        thread::spawn(move || loop {
-            match key_rx.recv() {
-                Ok(keys) => *keys_pressed.write().unwrap() = keys,
-                Err(_) => break,
             }
         });
 
         Display {
+            screen,
             buffer,
             handle,
-            buf_tx,
             keys_pressed: key_buffer,
         }
     }

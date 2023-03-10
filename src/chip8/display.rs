@@ -1,5 +1,3 @@
-use std::rc::Rc;
-use std::sync::mpsc::{self, Receiver, SyncSender};
 use std::sync::{Arc, RwLock};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
@@ -23,7 +21,7 @@ pub struct Display {
 
 impl Display {
     pub fn update_buffer(&self) {
-        // TODO: add dynamic sleep to get consistent fps.
+        // TODO: add dynamic sleep to get consistent fps, and buffer key inputs.
         thread::sleep(Duration::from_micros(1));
         *self.screen.write().unwrap() = self.buffer;
     }
@@ -53,6 +51,9 @@ impl Display {
                 if let Some(keys) = window.get_keys() {
                     *keys_pressed.write().unwrap() = keys.clone();
                 }
+
+                // Allow the buffer to be updated
+                thread::sleep(Duration::from_micros(1));
             }
         });
 

@@ -3,9 +3,8 @@ use crate::chip8::opcodes::*;
 use crate::chip8::registers::Registers;
 use either::Either;
 use rand::random;
-use std::time::Duration;
+use std::io;
 use std::{fs::File, io::Read};
-use std::{io, thread};
 
 const SPRITE_BYTE_LENGTH: usize = 5;
 const SPRITES: [u8; SPRITE_BYTE_LENGTH * 16] = [

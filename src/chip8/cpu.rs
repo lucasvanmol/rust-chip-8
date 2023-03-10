@@ -4,6 +4,7 @@ use crate::chip8::registers::Registers;
 use either::Either;
 use rand::random;
 use std::io;
+use std::thread::sleep_ms;
 use std::{fs::File, io::Read};
 
 const SPRITE_BYTE_LENGTH: usize = 5;

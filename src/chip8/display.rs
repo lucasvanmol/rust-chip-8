@@ -17,7 +17,6 @@ pub struct Display {
     buffer: Buffer,
     pub handle: JoinHandle<()>,
     buf_tx: SyncSender<Buffer>,
-    end_rx: Receiver<bool>,
     keys_pressed: Arc<RwLock<Vec<Key>>>,
 }
 
@@ -31,7 +30,6 @@ impl Display {
 
         let (buf_tx, buf_rx): (SyncSender<Buffer>, Receiver<Buffer>) = mpsc::sync_channel(1);
         let (key_tx, key_rx) = mpsc::channel();
-        let (end_tx, end_rx) = mpsc::sync_channel(0);
 
         let handle = thread::spawn(move || {
             let mut opts = WindowOptions::default();
@@ -54,8 +52,8 @@ impl Display {
                     key_tx.send((*keys).clone()).unwrap();
                 }
             }
+
             // Send end signal & flush out buf channel so that buf_tx.send does not hang
-            end_tx.send(true).unwrap();
             buf_rx.try_recv().unwrap();
         });
 
@@ -73,13 +71,12 @@ impl Display {
             buffer,
             handle,
             buf_tx,
-            end_rx,
             keys_pressed: key_buffer,
         }
     }
 
     pub fn is_window_open(&self) -> bool {
-        self.end_rx.try_recv() != Err(TryRecvError::Disconnected)
+        !self.handle.is_finished()
     }
 
     pub fn get_key_down(&self) -> Option<Key> {

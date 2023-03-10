@@ -1,10 +1,22 @@
-use crate::chip8::registers::Register;
+use std::ops::Deref;
+
 use either::Either;
 use minifb::Key;
 
 pub type Address = u16;
 pub type Nibble = u8;
 pub type OPcode = u16;
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct VxyRegister(pub u8);
+
+impl Deref for VxyRegister {
+    type Target = u8;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[allow(non_camel_case_types)]
 #[derive(Debug)]
@@ -15,31 +27,31 @@ pub enum Instruction {
     JP(Address),
     JP_V0(Address),
     CALL(Address),
-    SE(Register, Either<Register, u8>),
-    SNE(Register, Either<Register, u8>),
-    ADD(Register, Either<Register, u8>),
-    ADD_I(Register),
-    SUB(Register, Register),
-    SUBN(Register, Register),
-    OR(Register, Register),
-    AND(Register, Register),
-    XOR(Register, Register),
-    SHR(Register),
-    SHL(Register),
-    RND(Register, u8),
-    DRW(Register, Register, Nibble),
-    SKP(Register),
-    SKNP(Register),
-    LD(Register, Either<Register, u8>),
+    SE(VxyRegister, Either<VxyRegister, u8>),
+    SNE(VxyRegister, Either<VxyRegister, u8>),
+    ADD(VxyRegister, Either<VxyRegister, u8>),
+    ADD_I(VxyRegister),
+    SUB(VxyRegister, VxyRegister),
+    SUBN(VxyRegister, VxyRegister),
+    OR(VxyRegister, VxyRegister),
+    AND(VxyRegister, VxyRegister),
+    XOR(VxyRegister, VxyRegister),
+    SHR(VxyRegister),
+    SHL(VxyRegister),
+    RND(VxyRegister, u8),
+    DRW(VxyRegister, VxyRegister, Nibble),
+    SKP(VxyRegister),
+    SKNP(VxyRegister),
+    LD(VxyRegister, Either<VxyRegister, u8>),
     LD_I(Address),
-    LD_Vx_DT(Register),
-    LD_Vx_K(Register),
-    LD_DT_Vx(Register),
-    LD_ST_Vx(Register),
-    LD_F(Register),
-    LD_B(Register),
-    LD_I_Vx(Register),
-    LD_Vx_I(Register),
+    LD_Vx_DT(VxyRegister),
+    LD_Vx_K(VxyRegister),
+    LD_DT_Vx(VxyRegister),
+    LD_ST_Vx(VxyRegister),
+    LD_F(VxyRegister),
+    LD_B(VxyRegister),
+    LD_I_Vx(VxyRegister),
+    LD_Vx_I(VxyRegister),
 }
 
 pub fn get_first(bytes: OPcode) -> u8 {
@@ -50,12 +62,12 @@ pub fn get_addr(bytes: OPcode) -> Address {
     bytes & 0x0FFF
 }
 
-pub fn get_vx(bytes: OPcode) -> Register {
-    Register::Vx(((bytes & 0x0F00) >> 8) as u8)
+pub fn get_vx(bytes: OPcode) -> VxyRegister {
+    VxyRegister(((bytes & 0x0F00) >> 8) as u8)
 }
 
-pub fn get_vy(bytes: OPcode) -> Register {
-    Register::Vx(((bytes & 0x00F0) >> 4) as u8)
+pub fn get_vy(bytes: OPcode) -> VxyRegister {
+    VxyRegister(((bytes & 0x00F0) >> 4) as u8)
 }
 
 pub fn get_nibble(bytes: OPcode) -> Nibble {
@@ -127,8 +139,8 @@ mod tests {
 
         assert_eq!(get_first(TESTCODE), 0x1);
         assert_eq!(get_addr(TESTCODE), 0x0234);
-        assert_eq!(get_vx(TESTCODE), Register::Vx(0x2));
-        assert_eq!(get_vy(TESTCODE), Register::Vx(0x3));
+        assert_eq!(get_vx(TESTCODE), VxyRegister(0x2));
+        assert_eq!(get_vy(TESTCODE), VxyRegister(0x3));
         assert_eq!(get_nibble(TESTCODE), 0x4);
         assert_eq!(get_byte(TESTCODE), 0x34)
     }

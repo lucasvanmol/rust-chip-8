@@ -7,11 +7,6 @@ use std::{
     time::Duration,
 };
 
-#[derive(PartialEq, Debug)]
-pub enum Register {
-    Vx(u8),
-}
-
 #[allow(non_snake_case)]
 #[derive(Debug)]
 pub struct Registers {

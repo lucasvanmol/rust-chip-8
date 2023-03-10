@@ -1,6 +1,6 @@
 use crate::chip8::display::Display;
 use crate::chip8::opcodes::*;
-use crate::chip8::registers::{Register, Registers};
+use crate::chip8::registers::Registers;
 use either::Either;
 use rand::random;
 use std::io;
@@ -97,16 +97,12 @@ impl CHIP8 {
         }
     }
 
-    fn get_vx_val(&self, reg: &Register) -> Option<u8> {
-        match reg {
-            Register::Vx(num) => Some(self.reg.Vx[*num as usize]),
-        }
+    fn get_vx_val(&self, reg: VxyRegister) -> u8 {
+        self.reg.Vx[*reg as usize]
     }
 
-    fn set_vx_val(&mut self, reg: &Register, val: u8) {
-        match reg {
-            Register::Vx(num) => self.reg.Vx[*num as usize] = val,
-        }
+    fn set_vx_val(&mut self, reg: VxyRegister, val: u8) {
+        self.reg.Vx[*reg as usize] = val
     }
 
     fn execute_instruction(&mut self, instr: Instruction) {
@@ -134,9 +130,9 @@ impl CHIP8 {
                 self.reg.PC = addr as usize;
             }
             Instruction::SE(vx, other) => {
-                let val1 = self.get_vx_val(&vx).unwrap();
+                let val1 = self.get_vx_val(vx);
                 let val2 = match other {
-                    Either::Left(reg) => self.get_vx_val(&reg).unwrap(),
+                    Either::Left(reg) => self.get_vx_val(reg),
                     Either::Right(u8) => u8,
                 };
                 if val1 == val2 {
@@ -144,9 +140,9 @@ impl CHIP8 {
                 }
             }
             Instruction::SNE(vx, other) => {
-                let val1 = self.get_vx_val(&vx).unwrap();
+                let val1 = self.get_vx_val(vx);
                 let val2 = match other {
-                    Either::Left(reg) => self.get_vx_val(&reg).unwrap(),
+                    Either::Left(reg) => self.get_vx_val(reg),
                     Either::Right(u8) => u8,
                 };
                 if val1 != val2 {
@@ -154,67 +150,65 @@ impl CHIP8 {
                 }
             }
             Instruction::ADD(vx, other) => {
-                let val1 = self.get_vx_val(&vx).unwrap();
+                let val1 = self.get_vx_val(vx);
                 let val2 = match other {
-                    Either::Left(reg) => self.get_vx_val(&reg).unwrap(),
+                    Either::Left(reg) => self.get_vx_val(reg),
                     Either::Right(u8) => u8,
                 };
                 let result = val1.overflowing_add(val2);
-                self.set_vx_val(&vx, result.0);
-                self.set_vx_val(&Register::Vx(0xF), result.1 as u8);
+                self.set_vx_val(vx, result.0);
+                self.set_vx_val(VxyRegister(0xF), result.1 as u8);
             }
-            Instruction::ADD_I(vx) => self.reg.I += self.get_vx_val(&vx).unwrap() as u16,
+            Instruction::ADD_I(vx) => self.reg.I += self.get_vx_val(vx) as u16,
             Instruction::SUB(vx, vy) => {
-                let val1 = self.get_vx_val(&vx).unwrap();
-                let val2 = self.get_vx_val(&vy).unwrap();
+                let val1 = self.get_vx_val(vx);
+                let val2 = self.get_vx_val(vy);
                 let result = val1.overflowing_sub(val2);
-                self.set_vx_val(&vx, result.0);
-                self.set_vx_val(&Register::Vx(0xF), !result.1 as u8);
+                self.set_vx_val(vx, result.0);
+                self.set_vx_val(VxyRegister(0xF), !result.1 as u8);
             }
             Instruction::SUBN(vx, vy) => self.execute_instruction(Instruction::SUB(vy, vx)),
             Instruction::OR(vx, vy) => {
-                let val1 = self.get_vx_val(&vx).unwrap();
-                let val2 = self.get_vx_val(&vy).unwrap();
-                self.set_vx_val(&vx, val1 | val2)
+                let val1 = self.get_vx_val(vx);
+                let val2 = self.get_vx_val(vy);
+                self.set_vx_val(vx, val1 | val2)
             }
             Instruction::AND(vx, vy) => {
-                let val1 = self.get_vx_val(&vx).unwrap();
-                let val2 = self.get_vx_val(&vy).unwrap();
-                self.set_vx_val(&vx, val1 & val2)
+                let val1 = self.get_vx_val(vx);
+                let val2 = self.get_vx_val(vy);
+                self.set_vx_val(vx, val1 & val2)
             }
             Instruction::XOR(vx, vy) => {
-                let val1 = self.get_vx_val(&vx).unwrap();
-                let val2 = self.get_vx_val(&vy).unwrap();
-                self.set_vx_val(&vx, val1 ^ val2)
+                let val1 = self.get_vx_val(vx);
+                let val2 = self.get_vx_val(vy);
+                self.set_vx_val(vx, val1 ^ val2)
             }
             Instruction::SHR(vx) => {
-                let val1 = self.get_vx_val(&vx).unwrap();
-                self.set_vx_val(&Register::Vx(0xF), (val1.trailing_ones() > 0) as u8);
-                self.set_vx_val(&vx, val1 >> 1)
+                let val1 = self.get_vx_val(vx);
+                self.set_vx_val(VxyRegister(0xF), (val1.trailing_ones() > 0) as u8);
+                self.set_vx_val(vx, val1 >> 1)
             }
             Instruction::SHL(vx) => {
-                let val1 = self.get_vx_val(&vx).unwrap();
-                self.set_vx_val(&Register::Vx(0xF), (val1.leading_ones() > 0) as u8);
-                self.set_vx_val(&vx, val1 << 1)
+                let val1 = self.get_vx_val(vx);
+                self.set_vx_val(VxyRegister(0xF), (val1.leading_ones() > 0) as u8);
+                self.set_vx_val(vx, val1 << 1)
             }
             Instruction::RND(vx, byte) => {
                 let rand: u8 = random();
-                self.set_vx_val(&vx, rand & byte);
+                self.set_vx_val(vx, rand & byte);
             }
             Instruction::DRW(vx, vy, nibble) => {
                 let start = self.reg.I as usize;
                 let end = (self.reg.I + nibble as u16) as usize;
                 let bytes = &self.ram[start..end];
-                let collision = self.display.set_pixels(
-                    self.get_vx_val(&vx).unwrap(),
-                    self.get_vx_val(&vy).unwrap(),
-                    bytes,
-                );
+                let collision =
+                    self.display
+                        .set_pixels(self.get_vx_val(vx), self.get_vx_val(vy), bytes);
                 self.display.update_buffer();
-                self.set_vx_val(&Register::Vx(0xF), collision as u8);
+                self.set_vx_val(VxyRegister(0xF), collision as u8);
             }
             Instruction::SKP(vx) => {
-                let val = self.get_vx_val(&vx).unwrap();
+                let val = self.get_vx_val(vx);
                 let key = map_u8_to_key(val).expect(
                     format!(
                         "Invalid key value {:?} in register {:?} used in SKP instruction",
@@ -227,7 +221,7 @@ impl CHIP8 {
                 }
             }
             Instruction::SKNP(vx) => {
-                let val = self.get_vx_val(&vx).unwrap();
+                let val = self.get_vx_val(vx);
                 let key = map_u8_to_key(val).expect(
                     format!(
                         "Invalid key value {:?} in register {:?} used in SKNP instruction",
@@ -241,58 +235,56 @@ impl CHIP8 {
             }
             Instruction::LD(vx, other) => {
                 let val = match other {
-                    Either::Left(reg) => self.get_vx_val(&reg).unwrap(),
+                    Either::Left(reg) => self.get_vx_val(reg),
                     Either::Right(u8) => u8,
                 };
-                self.set_vx_val(&vx, val);
+                self.set_vx_val(vx, val);
             }
             Instruction::LD_I(addr) => {
                 self.reg.I = addr;
             }
-            Instruction::LD_Vx_DT(vx) => self.set_vx_val(&vx, self.reg.get_dt()),
+            Instruction::LD_Vx_DT(vx) => self.set_vx_val(vx, self.reg.get_dt()),
             Instruction::LD_Vx_K(vx) => {
                 while self.display.is_window_open() {
                     if let Some(key) = self.display.get_key_down() {
                         if let Some(val) = map_key_to_u8(key) {
-                            self.set_vx_val(&vx, val);
+                            self.set_vx_val(vx, val);
                             break;
                         }
                     }
                 }
             }
             Instruction::LD_DT_Vx(vx) => {
-                self.reg.set_dt(self.get_vx_val(&vx).unwrap());
+                self.reg.set_dt(self.get_vx_val(vx));
             }
             Instruction::LD_ST_Vx(vx) => {
-                self.reg.set_st(self.get_vx_val(&vx).unwrap());
+                self.reg.set_st(self.get_vx_val(vx));
             }
             Instruction::LD_F(vx) => {
-                let val = self.get_vx_val(&vx).unwrap();
+                let val = self.get_vx_val(vx);
                 self.reg.I = CHIP8::get_sprite_addr(val)
                     .expect(format!("Tried to get sprite with hex {:X}", val).as_ref());
             }
             Instruction::LD_B(vx) => {
-                let val = self.get_vx_val(&vx).unwrap();
+                let val = self.get_vx_val(vx);
                 let bcd = to_bcd(val);
                 self.ram[self.reg.I as usize] = bcd[0];
                 self.ram[(self.reg.I + 1) as usize] = bcd[1];
                 self.ram[(self.reg.I + 2) as usize] = bcd[2];
             }
             Instruction::LD_I_Vx(vx) => match vx {
-                Register::Vx(byte) => {
+                VxyRegister(byte) => {
                     for i in 0..byte + 1 {
-                        let vx = Register::Vx(i);
-                        let val = self.get_vx_val(&vx).unwrap();
+                        let val = self.get_vx_val(VxyRegister(i));
                         self.ram[(self.reg.I + i as u16) as usize] = val;
                     }
                 }
             },
             Instruction::LD_Vx_I(vx) => match vx {
-                Register::Vx(byte) => {
+                VxyRegister(byte) => {
                     for i in 0..byte + 1 {
-                        let vx = Register::Vx(i);
                         let val = self.ram[(self.reg.I + i as u16) as usize];
-                        self.set_vx_val(&vx, val)
+                        self.set_vx_val(VxyRegister(i), val)
                     }
                 }
             },
@@ -317,8 +309,6 @@ impl CHIP8 {
                 }
                 _ => {}
             }
-
-            dbg!(&instr);
 
             self.execute_instruction(instr);
 

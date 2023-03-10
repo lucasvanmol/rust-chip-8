@@ -22,6 +22,7 @@ pub struct Display {
 impl Display {
     pub fn update_buffer(&self) {
         // TODO: add dynamic sleep to get consistent fps, and buffer key inputs.
+        // consider using Mutex instead of RwLock
         thread::sleep(Duration::from_micros(1));
         *self.screen.write().unwrap() = self.buffer;
     }
